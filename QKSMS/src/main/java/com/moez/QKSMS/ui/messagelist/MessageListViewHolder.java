@@ -9,13 +9,15 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import butterknife.Bind;
+import butterknife.ButterKnife;
 import com.moez.QKSMS.R;
 import com.moez.QKSMS.common.LiveViewManager;
 import com.moez.QKSMS.common.google.ItemLoadedCallback;
 import com.moez.QKSMS.common.google.ThumbnailManager;
 import com.moez.QKSMS.enums.QKPreference;
-import com.moez.QKSMS.interfaces.SlideViewInterface;
 import com.moez.QKSMS.interfaces.LiveView;
+import com.moez.QKSMS.interfaces.SlideViewInterface;
 import com.moez.QKSMS.ui.base.ClickyViewHolder;
 import com.moez.QKSMS.ui.base.QKActivity;
 import com.moez.QKSMS.ui.mms.Presenter;
@@ -28,18 +30,18 @@ public class MessageListViewHolder extends ClickyViewHolder<MessageItem> impleme
     private final String TAG = "MessageListViewHolder";
 
     // Views
-    protected View mRoot;
-    protected QKTextView mBodyTextView;
-    protected QKTextView mDateView;
-    protected ImageView mLockedIndicator;
-    protected ImageView mDeliveredIndicator;
-    protected ImageView mDetailsIndicator;
-    protected AvatarView mAvatarView;
-    protected LinearLayout mMessageBlock;
-    protected View mSpace;
-    protected FrameLayout mMmsView;
-    protected ImageView mImageView;
-    protected ImageButton mSlideShowButton;
+    @Bind(R.id.text_view) QKTextView mBodyTextView;
+    @Bind(R.id.date_view) QKTextView mDateView;
+    @Bind(R.id.locked_indicator) ImageView mLockedIndicator;
+    @Bind(R.id.delivered_indicator) ImageView mDeliveredIndicator;
+    @Bind(R.id.details_indicator) ImageView mDetailsIndicator;
+    @Bind(R.id.avatar) AvatarView mAvatarView;
+    @Bind(R.id.message_block) LinearLayout mMessageBlock;
+    @Bind(R.id.space) View mSpace;
+    @Bind(R.id.mms_view) FrameLayout mMmsView;
+    @Bind(R.id.image_view) ImageView mImageView;
+    @Bind(R.id.play_slideshow_button) ImageButton mSlideShowButton;
+
     protected Button mDownloadButton;
     protected QKTextView mDownloadingLabel;
 
@@ -49,9 +51,7 @@ public class MessageListViewHolder extends ClickyViewHolder<MessageItem> impleme
     public MessageListViewHolder(QKActivity context, View view) {
         super(context, view);
 
-        mRoot = view;
-        mBodyTextView = (QKTextView) view.findViewById(R.id.text_view);
-        mDateView = (QKTextView) view.findViewById(R.id.date_view);
+        ButterKnife.bind(this, view);
         mLockedIndicator = (ImageView) view.findViewById(R.id.locked_indicator);
         mDeliveredIndicator = (ImageView) view.findViewById(R.id.delivered_indicator);
         mDetailsIndicator = (ImageView) view.findViewById(R.id.details_indicator);
@@ -70,9 +70,9 @@ public class MessageListViewHolder extends ClickyViewHolder<MessageItem> impleme
 
     protected void inflateDownloadControls() {
         if (mDownloadButton == null) {
-            mRoot.findViewById(R.id.mms_downloading_view_stub).setVisibility(View.VISIBLE);
-            mDownloadButton = (Button) mRoot.findViewById(R.id.btn_download_msg);
-            mDownloadingLabel = (QKTextView) mRoot.findViewById(R.id.label_downloading);
+            itemView.findViewById(R.id.mms_downloading_view_stub).setVisibility(View.VISIBLE);
+            mDownloadButton = (Button) itemView.findViewById(R.id.btn_download_msg);
+            mDownloadingLabel = (QKTextView) itemView.findViewById(R.id.label_downloading);
         }
     }
 

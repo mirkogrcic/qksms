@@ -178,8 +178,8 @@ public class MessageListAdapter extends RecyclerCursorAdapter<MessageListViewHol
         holder.mData = messageItem;
         holder.mContext = mContext;
         holder.mClickListener = mItemClickListener;
-        holder.mRoot.setOnClickListener(holder);
-        holder.mRoot.setOnLongClickListener(holder);
+        holder.itemView.setOnClickListener(holder);
+        holder.itemView.setOnLongClickListener(holder);
         holder.mPresenter = null;
 
         // Here we're avoiding reseting the avatar to the empty avatar when we're rebinding
