@@ -3,6 +3,7 @@ package com.moez.QKSMS.ui;
 import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -24,19 +25,21 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.ImageView;
+import butterknife.Bind;
+import butterknife.ButterKnife;
 import com.google.android.mms.pdu_alt.PduHeaders;
 import com.moez.QKSMS.R;
 import com.moez.QKSMS.common.ConversationPrefsHelper;
 import com.moez.QKSMS.common.DialogHelper;
 import com.moez.QKSMS.common.DonationManager;
-import com.moez.QKSMS.common.QKRateSnack;
 import com.moez.QKSMS.common.LiveViewManager;
+import com.moez.QKSMS.common.QKRateSnack;
 import com.moez.QKSMS.common.google.DraftCache;
-import com.moez.QKSMS.enums.QKPreference;
 import com.moez.QKSMS.common.utils.KeyboardUtils;
 import com.moez.QKSMS.common.utils.MessageUtils;
 import com.moez.QKSMS.common.utils.Units;
 import com.moez.QKSMS.data.Conversation;
+import com.moez.QKSMS.enums.QKPreference;
 import com.moez.QKSMS.mmssms.Utils;
 import com.moez.QKSMS.receiver.IconColorReceiver;
 import com.moez.QKSMS.transaction.NotificationManager;
@@ -62,21 +65,11 @@ import java.util.Collection;
 
 
 public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuListener {
-
     private final String TAG = "MainActivity";
 
     public final static String EXTRA_THREAD_ID = "thread_id";
 
     public static long sThreadShowing;
-
-    private final String KEY_TYPE = "type";
-    private final String KEY_POSITION = "position";
-    private final String KEY_THREADID = "thread_id";
-
-    private final int TYPE_COMPOSE = 0;
-    private final int TYPE_CONVERSATION = 1;
-    private final int TYPE_SETTINGS = 2;
-    private final int TYPE_SEARCH = 3;
 
     private static final int THREAD_LIST_QUERY_TOKEN = 1701;
     private static final int UNREAD_THREADS_QUERY_TOKEN = 1702;
@@ -86,10 +79,9 @@ public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuL
 
     public static final String MMS_SETUP_DONT_ASK_AGAIN = "mmsSetupDontAskAgain";
 
-    // thread IDs are always nonnegative
-    private long mThreadId = 0;
+    @Bind(R.id.root) View mRoot;
+    @Bind(R.id.sliding_menu) SlidingMenu mSlidingMenu;
 
-    private SlidingMenu mSlidingMenu;
     private ConversationListFragment mConversationList;
     private ContentFragment mContent;
     private long mWaitingForThreadId = -1;
@@ -108,8 +100,8 @@ public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuL
 
         setContentView(R.layout.activity_main);
         setTitle(R.string.title_conversation_list);
+        ButterKnife.bind(this);
 
-        mSlidingMenu = (SlidingMenu) findViewById(R.id.sliding_menu);
         setSlidingTabEnabled(mPrefs.getBoolean(SettingsFragment.SLIDING_TAB, false));
         mSlidingMenu.setListener(this);
         mSlidingMenu.setContent();
@@ -117,65 +109,36 @@ public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuL
         mSlidingMenu.showContent(false);
         mSlidingMenu.showMenu(false);
 
-        setupFragments(savedInstanceState);
-        onNewIntent(getIntent());
+        FragmentManager fm = getFragmentManager();
 
+        mConversationList = (ConversationListFragment) fm.findFragmentById(R.id.menu_frame);
+        if (mConversationList == null) {
+            mConversationList = new ConversationListFragment();
+        }
+        FragmentTransaction menuTransaction = fm.beginTransaction();
+        menuTransaction.replace(R.id.menu_frame, mConversationList);
+        menuTransaction.commit();
+
+        mContent = (ContentFragment) fm.findFragmentById(R.id.content_frame);
+        if (mContent == null) {
+            mContent = ComposeFragment.getInstance(null);
+        }
+        FragmentTransaction contentTransaction = fm.beginTransaction();
+        contentTransaction.replace(R.id.content_frame, (Fragment) mContent);
+        contentTransaction.commit();
+
+        onNewIntent(getIntent());
         showDialogIfNeeded(savedInstanceState);
 
         LiveViewManager.registerView(QKPreference.BACKGROUND, this, key -> {
             // Update the background color. This code is important during the welcome screen setup, when the activity
             // in the ThemeManager isn't the MainActivity
-            findViewById(R.id.menu_frame).getRootView().setBackgroundColor(ThemeManager.getBackgroundColor());
-            findViewById(R.id.menu_frame).setBackgroundColor(ThemeManager.getBackgroundColor());
-            findViewById(R.id.content_frame).setBackgroundColor(ThemeManager.getBackgroundColor());
+            mRoot.setBackgroundColor(ThemeManager.getBackgroundColor());
         });
 
         //Adds a small/non intrusive snackbar that asks the user to rate the app
         SnackEngage.from(this).withSnack(new QKRateSnack().withDuration(BaseSnack.DURATION_LONG))
                 .build().engageWhenAppropriate();
-    }
-
-    /**
-     * Sets up menu and content fragments
-     * If the fragments are stored in the bundle, use those. Otherwise, instantiate new ones
-     */
-    private void setupFragments(Bundle savedInstanceState) {
-        int type = 0;
-        int position = 0;
-        mThreadId = 0;
-
-        if (savedInstanceState != null) {
-            type = savedInstanceState.getInt(KEY_TYPE, 0);
-            position = savedInstanceState.getInt(KEY_POSITION, 0);
-            mThreadId = savedInstanceState.getLong(KEY_THREADID, 0);
-        }
-
-        mConversationList = new ConversationListFragment();
-        mConversationList.setPosition(position);
-        getFragmentManager().beginTransaction()
-                .replace(R.id.menu_frame, mConversationList)
-                .commit();
-
-        switch (type) {
-            case TYPE_COMPOSE:
-                mContent = new ComposeFragment();
-                break;
-            case TYPE_CONVERSATION:
-                Bundle args = new Bundle();
-                args.putLong(MessageListFragment.ARG_THREAD_ID, mThreadId);
-                mContent = MessageListFragment.getInstance(mThreadId, 0, null, false);
-                break;
-            case TYPE_SETTINGS:
-                mContent = SettingsFragment.newInstance(R.xml.settings_main);
-                break;
-            case TYPE_SEARCH:
-                mContent = new SearchFragment();
-                break;
-        }
-
-        getFragmentManager().beginTransaction()
-                .replace(R.id.content_frame, (Fragment) mContent)
-                .commit();
     }
 
     /**
@@ -233,6 +196,10 @@ public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuL
         mSlidingMenu.showMenu();
     }
 
+    public SlidingMenu getSlidingMenu() {
+        return mSlidingMenu;
+    }
+
     /**
      * Configured the sliding menu view to peek the content or not.
      *
@@ -264,10 +231,6 @@ public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuL
 
     public Fragment getContent() {
         return (Fragment) mContent;
-    }
-
-    public long getThreadId() {
-        return mThreadId;
     }
 
     @Override
@@ -346,7 +309,8 @@ public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuL
             if (!mSlidingMenu.isMenuShowing()) {
                 Fragment category = getFragmentManager().findFragmentByTag(SettingsFragment.CATEGORY_TAG);
                 if (category != null) {
-                    getFragmentManager().beginTransaction().remove(category).commit();
+                    getFragmentManager().beginTransaction()
+                            .replace(R.id.content_frame, SettingsFragment.newInstance(R.xml.settings_main)).commit();
                 } else {
                     mSlidingMenu.showMenu();
                 }
@@ -492,12 +456,6 @@ public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuL
         if (m.findFragmentByTag(MMSSetupFragment.TAG) == null) {
             outState.putBoolean(KEY_MMS_SETUP_FRAGMENT_DISMISSED, true);
         }
-
-        outState.putInt(KEY_TYPE, mContent instanceof MessageListFragment ? TYPE_CONVERSATION :
-                mContent instanceof SettingsFragment ? TYPE_SETTINGS :
-                        mContent instanceof SearchFragment ? TYPE_SEARCH : TYPE_COMPOSE);
-        outState.putInt(KEY_POSITION, mConversationList.getPosition());
-        outState.putLong(KEY_THREADID, mThreadId);
     }
 
     public void switchContent(ContentFragment fragment, boolean animate) {
@@ -540,7 +498,6 @@ public class MainActivity extends QKActivity implements SlidingMenu.SlidingMenuL
         MessageListFragment fragment = MessageListFragment.getInstance(threadId, rowId, pattern, !animate);
 
         // Save the thread ID here and switch the content
-        mThreadId = threadId;
         sThreadShowing = threadId;
         switchContent(fragment, animate);
     }

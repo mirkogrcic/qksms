@@ -193,14 +193,6 @@ public class MessageListFragment extends QKContentFragment implements ActivityLa
         mBackgroundQueryHandler = new BackgroundQueryHandler(mContext.getContentResolver());
     }
 
-    @Override
-    public void onAttach(Activity activity) {
-        super.onAttach(activity);
-
-        // Make sure to notify that this conversation has been opened. This will mark it as read, load new drafts, etc.
-        onOpenConversation();
-    }
-
     // This is called by BaseContentFragment when updateArguments is called.
     @Override
     public void onNewArguments() {
@@ -221,6 +213,8 @@ public class MessageListFragment extends QKContentFragment implements ActivityLa
 
         View view = inflater.inflate(R.layout.fragment_conversation, container, false);
         mRecyclerView = (MessageListRecyclerView) view.findViewById(R.id.conversation);
+
+        mOpened = !((MainActivity) mContext).getSlidingMenu().isMenuShowing();
 
         mAdapter = new MessageListAdapter(mContext);
         mAdapter.setItemClickListener(this);
@@ -273,6 +267,13 @@ public class MessageListFragment extends QKContentFragment implements ActivityLa
         // perform initialization such as set up the Conversation object, make a query in the
         // adapter, etc.
         loadFromArguments();
+        onOpenConversation();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mComposeView.saveDraft();
     }
 
     @Override
@@ -298,7 +299,7 @@ public class MessageListFragment extends QKContentFragment implements ActivityLa
     }
 
     private void setTitle() {
-        if (mContext != null && mConversation != null) {
+        if (mContext != null && mConversation != null && !((MainActivity) mContext).getSlidingMenu().isMenuShowing()) {
             mContext.setTitle(mConversation.getRecipients().formatNames(", "));
         }
     }
@@ -516,14 +517,6 @@ public class MessageListFragment extends QKContentFragment implements ActivityLa
                 R.string.notification_mute_off : R.string.notification_mute_on, Toast.LENGTH_SHORT).show();
         Vibrator v = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
         v.vibrate(vibrateTime);
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-
-        // Save the draft. This should also clear the EditText.
-        mComposeView.saveDraft();
     }
 
     /**
